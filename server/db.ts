@@ -2,13 +2,33 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Add validation for DB_NAME immediately
+const validateDatabaseConfig = () => {
+  const requiredVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME'];
+  const missing = [];
+  
+  for (const varName of requiredVars) {
+    const value = process.env[varName];
+    if (!value || value.trim() === '') {
+      missing.push(varName);
+    }
+  }
+  
+  if (missing.length > 0) {
+    throw new Error(`❌ Missing required database configuration: ${missing.join(', ')}`);
+  }
+};
+
+// Validate before logging
+validateDatabaseConfig();
+
 // Log database configuration on startup
 console.log('=== DATABASE CONFIGURATION ===');
-console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
-console.log('DB_PORT:', process.env.DB_PORT || 'NOT SET');
-console.log('DB_USER:', process.env.DB_USER || 'NOT SET');
+console.log('DB_HOST:', process.env.DB_HOST);
+console.log('DB_PORT:', process.env.DB_PORT);
+console.log('DB_USER:', process.env.DB_USER);
 console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : 'NOT SET');
-console.log('DB_NAME:', process.env.DB_NAME || 'NOT SET');
+console.log('DB_NAME:', process.env.DB_NAME);  // This should now always have a value
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('==============================\n');
 
@@ -33,11 +53,11 @@ const getSSLConfig = () => {
 };
 
 export const pool = mysql.createPool({
-  host: process.env.DB_HOST,
+  host: process.env.DB_HOST!,
   port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER,
+  user: process.env.DB_USER!,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME!,  // Force non-null after validation
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
