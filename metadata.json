@@ -1,0 +1,6 @@
+{
+  "name": "PharmaFlow ERP",
+  "description": "Premium Pharmacy Management ERP System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
