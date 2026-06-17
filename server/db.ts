@@ -4,11 +4,11 @@ dotenv.config();
 
 // Log database configuration on startup
 console.log('=== DATABASE CONFIGURATION ===');
-console.log('DB_HOST:', process.env.DB_HOST || 'localhost (DEFAULT)');
-console.log('DB_PORT:', process.env.DB_PORT || '3306 (DEFAULT)');
-console.log('DB_USER:', process.env.DB_USER || 'root (DEFAULT)');
-console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : 'NOT SET (empty password)');
-console.log('DB_NAME:', process.env.DB_NAME || 'pharmaflow (DEFAULT)');
+console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
+console.log('DB_PORT:', process.env.DB_PORT || 'NOT SET');
+console.log('DB_USER:', process.env.DB_USER || 'NOT SET');
+console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : 'NOT SET');
+console.log('DB_NAME:', process.env.DB_NAME || 'NOT SET');
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('==============================\n');
 
@@ -33,11 +33,11 @@ const getSSLConfig = () => {
 };
 
 export const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'pharmaflow',
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
