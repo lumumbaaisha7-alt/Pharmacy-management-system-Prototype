@@ -8,6 +8,7 @@ import { Progress } from "../../components/ui/progress";
 import { Pill, CheckCircle2, ChevronRight, Store, Settings as SettingsIcon, Shield, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Swal from "sweetalert2";
+import api from "../../lib/api";
 
 export function Installer() {
   const [, setLocation] = useLocation();
@@ -17,8 +18,15 @@ export function Installer() {
 
   // Form states
   const [pharmacyName, setPharmacyName] = useState("");
+  const [pharmacyPhone, setPharmacyPhone] = useState("");
+  const [pharmacyEmail, setPharmacyEmail] = useState("");
+  const [pharmacyAddress, setPharmacyAddress] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const [faviconBase64, setFaviconBase64] = useState<string | null>(null);
 
   const nextStep = () => {
     if (step < 6) setStep(step + 1);
@@ -28,24 +36,58 @@ export function Installer() {
     if (step > 1) setStep(step - 1);
   };
 
-  const handleInstall = () => {
+  const [statusMessage, setStatusMessage] = useState("Preparing installation...");
+
+  const handleInstall = async () => {
     setInstalling(true);
     setStep(5);
     
-    // Simulate installation progress
-    let iters = 0;
-    const interval = setInterval(() => {
-      iters += 1;
-      setProgress((prev) => Math.min(prev + 10, 100));
-      if (iters >= 10) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setInstalling(false);
-          setStep(6);
-          localStorage.setItem("app_installed", "true");
-        }, 500);
-      }
-    }, 400);
+    try {
+      await api.post("/install", {
+        pharmacyDetails: { name: pharmacyName, email: pharmacyEmail, phone: pharmacyPhone, address: pharmacyAddress },
+        adminDetails: { name: adminName, email: adminEmail, password: adminPassword },
+        branding: { currency: "TZS", timezone: "Africa/Dar_es_Salaam", logo_base64: logoBase64, favicon_base64: faviconBase64 } 
+      });
+
+      const interval = setInterval(async () => {
+        try {
+          const res = await api.get("/install/status");
+          setProgress(res.data.progress);
+          setStatusMessage(res.data.message);
+          
+          if (res.data.complete) {
+            clearInterval(interval);
+            setTimeout(() => {
+              setInstalling(false);
+              setStep(6);
+            }, 500);
+          } else if (res.data.error) {
+            clearInterval(interval);
+            Swal.fire({ title: "Error", text: res.data.error, icon: "error" });
+            setStep(4);
+            setInstalling(false);
+          }
+        } catch (e) {
+          // ignore polling errors
+        }
+      }, 500);
+    } catch (error: any) {
+      Swal.fire({ title: "Error", text: error.response?.data?.error || "Installation failed", icon: "error" });
+      setStep(4);
+      setInstalling(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'favicon') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (type === 'logo') setLogoBase64(reader.result as string);
+        if (type === 'favicon') setFaviconBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const finishInstallation = () => {
@@ -150,16 +192,16 @@ export function Installer() {
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-2">
                       <Label htmlFor="pharmacy_phone">Phone Number</Label>
-                      <Input id="pharmacy_phone" placeholder="+255..." />
+                      <Input id="pharmacy_phone" placeholder="+255..." value={pharmacyPhone} onChange={e => setPharmacyPhone(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="pharmacy_email">Email Address</Label>
-                      <Input id="pharmacy_email" placeholder="contact@..." />
+                      <Input id="pharmacy_email" placeholder="contact@..." value={pharmacyEmail} onChange={e => setPharmacyEmail(e.target.value)} />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pharmacy_address">Physical Address</Label>
-                    <Input id="pharmacy_address" placeholder="Street, City, Country" />
+                    <Input id="pharmacy_address" placeholder="Street, City, Country" value={pharmacyAddress} onChange={e => setPharmacyAddress(e.target.value)} />
                   </div>
                 </div>
                 <div className="flex justify-between mt-8 pt-4 border-t border-gray-100 dark:border-gray-800">
@@ -183,6 +225,18 @@ export function Installer() {
                   <p className="text-gray-500 mt-1">Set up your preferences (can be changed later).</p>
                 </div>
                 <div className="space-y-6 flex-1">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Company Logo</Label>
+                      <Input type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={(e) => handleFileChange(e, 'logo')} />
+                      {logoBase64 && <img src={logoBase64} alt="Logo preview" className="h-16 w-auto mt-2 object-contain" />}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Favicon</Label>
+                      <Input type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={(e) => handleFileChange(e, 'favicon')} />
+                      {faviconBase64 && <img src={faviconBase64} alt="Favicon preview" className="h-8 w-8 mt-2 object-contain" />}
+                    </div>
+                  </div>
                   <div className="space-y-3">
                     <Label>Default Currency</Label>
                     <div className="grid grid-cols-3 gap-2">
@@ -231,12 +285,12 @@ export function Installer() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="admin_pass">Password *</Label>
-                    <Input id="admin_pass" type="password" />
+                    <Input id="admin_pass" type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} />
                   </div>
                 </div>
                 <div className="flex justify-between mt-8 pt-4 border-t border-gray-100 dark:border-gray-800">
                   <Button variant="ghost" onClick={prevStep}>Back</Button>
-                  <Button onClick={handleInstall} disabled={!adminName || !adminEmail}>Begin Installation</Button>
+                  <Button onClick={handleInstall} disabled={!adminName || !adminEmail || !adminPassword}>Begin Installation</Button>
                 </div>
               </motion.div>
             )}
@@ -252,7 +306,7 @@ export function Installer() {
                 <Loader2 className="h-12 w-12 text-primary animate-spin mb-6" />
                 <h2 className="text-2xl font-bold mb-2">Installing System...</h2>
                 <p className="text-gray-500 mb-8 max-w-sm">
-                  Configuring databases, setting up root user, and preparing standard modules.
+                  {statusMessage}
                 </p>
                 <div className="w-full max-w-md space-y-2">
                    <Progress value={progress} className="h-2" />

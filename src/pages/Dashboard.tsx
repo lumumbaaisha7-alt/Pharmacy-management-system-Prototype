@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { 
   ArrowUpRight, 
   ArrowDownRight, 
@@ -9,7 +10,8 @@ import {
   TrendingUp,
   MoreVertical,
   Building2,
-  Activity
+  Activity,
+  Loader2
 } from "lucide-react";
 import { AppLayout } from "../components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -38,22 +40,68 @@ import {
   BarChart,
   Bar
 } from 'recharts';
-import { 
-  CHART_DATA_SALES,
-  TODAY_SALES,
-  MONTHLY_SALES,
-  TOTAL_MEDICINES,
-  LOW_STOCK_COUNT,
-  EXPIRING_SOON_COUNT,
-  SUPPLIERS_COUNT,
-  CUSTOMERS_COUNT,
-  RECENT_SALES,
-  LOW_STOCK_ALERTS,
-  EXPIRY_ALERTS
-} from "../lib/constants";
 import Swal from "sweetalert2";
+import api from "../lib/api";
 
 export function Dashboard() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>({
+    todaySales: 0,
+    monthlySales: 0,
+    totalMedicines: 0,
+    lowStockCount: 0,
+    expiringSoonCount: 0,
+    suppliersCount: 15, // Mocked for now
+    customersCount: 1248, // Mocked for now
+    recentSales: [],
+    lowStockAlerts: [],
+    expiryAlerts: [],
+    chartDataSales: [
+      { day: 'Mon', sales: 400000 },
+      { day: 'Tue', sales: 300000 },
+      { day: 'Wed', sales: 550000 },
+      { day: 'Thu', sales: 450000 },
+      { day: 'Fri', sales: 700000 },
+      { day: 'Sat', sales: 900000 },
+      { day: 'Sun', sales: 845000 },
+    ],
+    inventoryStatus: [
+      { name: 'In Stock', value: 300 },
+      { name: 'Low Stock', value: 45 },
+      { name: 'Out of Stock', value: 11 }
+    ],
+    topMedicines: [
+      { name: 'Paracetamol', sales: 400 },
+      { name: 'Amoxicillin', sales: 300 },
+      { name: 'Vitamin C', sales: 200 },
+      { name: 'Diclofenac', sales: 150 },
+    ]
+  });
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/dashboard/stats');
+      setStats((prev: any) => ({
+        ...prev,
+        todaySales: res.data.todaySales,
+        monthlySales: res.data.monthlySales,
+        totalMedicines: res.data.totalMedicines,
+        lowStockCount: res.data.lowStockCount,
+        recentSales: res.data.recentSales,
+        lowStockAlerts: res.data.lowStockAlerts,
+        topMedicines: res.data.topMedicines || prev.topMedicines
+      }));
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-TZ', {
       style: 'currency',
@@ -83,18 +131,9 @@ export function Dashboard() {
   };
 
   const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
-  const INVENTORY_STATUS = [
-    { name: 'In Stock', value: 300 },
-    { name: 'Low Stock', value: 45 },
-    { name: 'Out of Stock', value: 11 }
-  ];
+  const INVENTORY_STATUS = stats.inventoryStatus;
 
-  const TOP_MEDICINES = [
-    { name: 'Paracetamol', sales: 400 },
-    { name: 'Amoxicillin', sales: 300 },
-    { name: 'Vitamin C', sales: 200 },
-    { name: 'Diclofenac', sales: 150 },
-  ];
+  const TOP_MEDICINES = stats.topMedicines;
 
   return (
     <AppLayout>
@@ -127,12 +166,14 @@ export function Dashboard() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">Today's Sales</p>
                 <h3 className="text-xl font-bold font-mono tracking-tight text-gray-900 dark:text-white truncate">
-                  {formatCurrency(TODAY_SALES)}
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : formatCurrency(stats.todaySales)}
                 </h3>
-                <div className="flex items-center gap-1 mt-0.5 text-xs text-green-600 dark:text-green-400">
-                  <ArrowUpRight className="h-3 w-3" />
-                  <span>+18%</span>
-                </div>
+                {!loading && (
+                  <div className="flex items-center gap-1 mt-0.5 text-xs text-green-600 dark:text-green-400">
+                    <ArrowUpRight className="h-3 w-3" />
+                    <span>+18%</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -143,7 +184,7 @@ export function Dashboard() {
                  <p className="text-xs font-medium text-gray-500">Monthly</p>
                  <TrendingUp className="h-4 w-4 text-emerald-500" />
                </div>
-               <h3 className="text-base font-bold font-mono truncate">{formatCurrency(MONTHLY_SALES)}</h3>
+               <h3 className="text-base font-bold font-mono truncate">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : formatCurrency(stats.monthlySales)}</h3>
             </CardContent>
           </Card>
 
@@ -153,7 +194,7 @@ export function Dashboard() {
                  <p className="text-xs font-medium text-gray-500">Medicines</p>
                  <Package className="h-4 w-4 text-blue-500" />
                </div>
-               <h3 className="text-lg font-bold">{TOTAL_MEDICINES}</h3>
+               <h3 className="text-lg font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.totalMedicines}</h3>
             </CardContent>
           </Card>
 
@@ -163,7 +204,7 @@ export function Dashboard() {
                  <p className="text-xs font-medium text-gray-500">Customers</p>
                  <Users className="h-4 w-4 text-purple-500" />
                </div>
-               <h3 className="text-lg font-bold">{CUSTOMERS_COUNT}</h3>
+               <h3 className="text-lg font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.customersCount}</h3>
             </CardContent>
           </Card>
           
@@ -173,7 +214,7 @@ export function Dashboard() {
                  <p className="text-xs font-medium text-gray-500">Suppliers</p>
                  <Building2 className="h-4 w-4 text-indigo-500" />
                </div>
-               <h3 className="text-lg font-bold">{SUPPLIERS_COUNT}</h3>
+               <h3 className="text-lg font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.suppliersCount}</h3>
             </CardContent>
           </Card>
 
@@ -183,7 +224,7 @@ export function Dashboard() {
                  <p className="text-xs font-medium text-orange-600">Low Stock</p>
                  <AlertTriangle className="h-4 w-4 text-orange-500" />
                </div>
-               <h3 className="text-lg font-bold text-orange-700">{LOW_STOCK_COUNT}</h3>
+               <h3 className="text-lg font-bold text-orange-700">{loading ? <Loader2 className="h-4 w-4 animate-spin text-orange-500" /> : stats.lowStockCount}</h3>
             </CardContent>
           </Card>
 
@@ -193,7 +234,7 @@ export function Dashboard() {
                  <p className="text-xs font-medium text-red-600">Expiring</p>
                  <Clock className="h-4 w-4 text-red-500" />
                </div>
-               <h3 className="text-lg font-bold text-red-700">{EXPIRING_SOON_COUNT}</h3>
+               <h3 className="text-lg font-bold text-red-700">{loading ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : stats.expiringSoonCount}</h3>
             </CardContent>
           </Card>
 
@@ -216,7 +257,7 @@ export function Dashboard() {
             <CardContent>
               <div className="h-[250px] w-full mt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={CHART_DATA_SALES} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <AreaChart data={stats.chartDataSales} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
@@ -332,7 +373,7 @@ export function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {RECENT_SALES.map((sale) => (
+                  {stats.recentSales.map((sale: any) => (
                     <TableRow key={sale.id}>
                       <TableCell className="font-medium text-xs">{sale.id}</TableCell>
                       <TableCell className="text-xs">{sale.customer}</TableCell>
@@ -360,7 +401,7 @@ export function Dashboard() {
               <CardContent className="px-0">
                 <ScrollArea className="h-[140px] px-4">
                   <div className="space-y-3">
-                    {LOW_STOCK_ALERTS.map(item => (
+                    {stats.lowStockAlerts.map((item: any) => (
                       <div key={item.id} className="flex justify-between items-center text-sm">
                         <span className="text-gray-600 dark:text-gray-300 truncate pr-4 text-xs">{item.name}</span>
                         <span className="font-semibold text-orange-600 dark:text-orange-500 shrink-0 text-xs">{item.stock} left</span>

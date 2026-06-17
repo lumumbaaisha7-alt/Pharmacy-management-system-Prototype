@@ -6,18 +6,24 @@ import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
 import { useLocation } from "wouter";
 import Swal from "sweetalert2";
+import { useAuth } from "../hooks/useAuth";
 
 export function Login() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    const email = (document.getElementById('email') as HTMLInputElement).value;
+    const password = (document.getElementById('password') as HTMLInputElement).value;
+
+    const success = await login(email, password);
+    setLoading(false);
+
+    if (success) {
       Swal.fire({
         title: "Welcome back!",
         text: "Successfully logged in to PharmaFlow",
@@ -27,7 +33,7 @@ export function Login() {
         timerProgressBar: true,
       });
       setLocation("/dashboard");
-    }, 1000);
+    }
   };
 
   return (

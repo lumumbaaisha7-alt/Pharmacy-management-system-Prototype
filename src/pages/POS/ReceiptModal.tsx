@@ -9,6 +9,8 @@ import {
 import { CartItem } from "./index";
 import { format } from "date-fns";
 import { Printer } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useSettings } from "../../hooks/useSettings";
 
 interface Props {
   open: boolean;
@@ -20,6 +22,7 @@ interface Props {
   paymentMethod: string;
   change: number;
   amountGiven: number;
+  receiptNumber: string;
 }
 
 export function ReceiptModal({ 
@@ -31,8 +34,11 @@ export function ReceiptModal({
   tax, 
   paymentMethod, 
   change,
-  amountGiven
+  amountGiven,
+  receiptNumber
 }: Props) {
+  const { settings } = useSettings();
+  const barcodeRef = useRef<SVGSVGElement>(null);
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-TZ', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(amount);
@@ -41,6 +47,23 @@ export function ReceiptModal({
   const handlePrint = () => {
     window.print();
   };
+
+  useEffect(() => {
+    if (open && receiptNumber && (window as any).JsBarcode) {
+      setTimeout(() => {
+        if (barcodeRef.current) {
+          (window as any).JsBarcode(barcodeRef.current, receiptNumber, {
+            format: "CODE128",
+            width: 1.5,
+            height: 40,
+            displayValue: true,
+            fontSize: 10,
+            margin: 0
+          });
+        }
+      }, 100);
+    }
+  }, [open, receiptNumber]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,15 +75,15 @@ export function ReceiptModal({
         {/* Printable Receipt Area */}
         <div className="p-6 bg-white text-black font-mono text-sm print:p-0" id="print-area">
           <div className="text-center space-y-1 mb-6">
-            <h2 className="text-xl font-bold uppercase tracking-widest">MediCare Pharmacy</h2>
-            <p className="text-xs">123 Health Ave, Medical District</p>
-            <p className="text-xs">Tel: +255 123 456 789</p>
-            <p className="text-xs">TIN: 123-456-789</p>
+            <h2 className="text-xl font-bold uppercase tracking-widest">{settings.pharmacy_name || 'PharmaFlow'}</h2>
+            <p className="text-xs">{settings.pharmacy_address || ''}</p>
+            <p className="text-xs">Tel: {settings.phone || ''}</p>
+            <p className="text-xs">Email: {settings.email || ''}</p>
           </div>
 
           <div className="flex justify-between text-xs mb-4 pb-4 border-b border-dashed border-gray-300">
             <div>
-              <p>RCPT: #R-{Math.floor(Math.random() * 100000)}</p>
+              <p>RCPT: #{receiptNumber}</p>
               <p>CASHIER: Admin</p>
             </div>
             <div className="text-right">
@@ -121,7 +144,9 @@ export function ReceiptModal({
           <div className="text-center text-xs space-y-1 pb-4">
             <p>Thank you for shopping with us!</p>
             <p>Keep your receipt for returns.</p>
-            <BarcodeMock />
+            <div className="mt-4 flex justify-center">
+              <svg ref={barcodeRef}></svg>
+            </div>
           </div>
         </div>
 
@@ -135,14 +160,3 @@ export function ReceiptModal({
     </Dialog>
   );
 }
-
-const BarcodeMock = () => (
-  <div className="mt-4 flex flex-col items-center justify-center opacity-70">
-    <div className="flex h-8 w-40">
-      {Array.from({ length: 30 }).map((_, i) => (
-        <div key={i} className="h-full bg-black" style={{ width: `${Math.max(1, Math.random() * 4)}px`, marginRight: `${Math.random() * 3}px`}}></div>
-      ))}
-    </div>
-    <span className="mt-1 font-mono text-[10px] tracking-widest text-black">89012345678</span>
-  </div>
-);

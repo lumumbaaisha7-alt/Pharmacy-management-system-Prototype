@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -6,18 +6,64 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
-import { Store, User, Users, Palette, Save, Upload } from "lucide-react";
+import { Store, User, Users, Palette, Save, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import api from "../../lib/api";
 
 export function Settings() {
-  const [systemName, setSystemName] = useState("MediCare Pharmacy");
-  const [email, setEmail] = useState("contact@medicare.com");
-  const [phone, setPhone] = useState("+255 123 456 789");
-  const [address, setAddress] = useState("123 Health Ave, Medical District");
-  
-  const handleSave = () => {
-    toast.success("Settings saved successfully!");
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<any>({
+    pharmacy_name: "",
+    email: "",
+    phone: "",
+    address: "",
+    currency: "TZS",
+    tax_rate: "18",
+    timezone: "Africa/Dar_es_Salaam",
+    theme: "system"
+  });
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get('/settings');
+      setSettings((prev: any) => ({...prev, ...res.data}));
+    } catch(err) {
+      toast.error("Failed to load settings");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleChange = (key: string, value: string) => {
+    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await api.put('/settings', settings);
+      toast.success("Settings saved successfully");
+    } catch(err) {
+      toast.error("Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -27,8 +73,9 @@ export function Settings() {
             <h2 className="text-2xl font-bold tracking-tight">System Settings</h2>
             <p className="text-gray-500 mt-1">Manage your pharmacy configuration and preferences.</p>
           </div>
-          <Button onClick={handleSave} className="flex items-center gap-2">
-            <Save className="h-4 w-4" /> Save Changes
+          <Button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2">
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} 
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
 
@@ -49,19 +96,19 @@ export function Settings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="sys-name">System Name</Label>
-                    <Input id="sys-name" value={systemName} onChange={(e) => setSystemName(e.target.value)} />
+                    <Input id="sys-name" value={settings.pharmacy_name} onChange={(e) => handleChange('pharmacy_name', e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sys-phone">Phone Number</Label>
-                    <Input id="sys-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    <Input id="sys-phone" value={settings.phone} onChange={(e) => handleChange('phone', e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sys-email">Email Address</Label>
-                    <Input id="sys-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input id="sys-email" type="email" value={settings.email} onChange={(e) => handleChange('email', e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sys-address">Physical Address</Label>
-                    <Input id="sys-address" value={address} onChange={(e) => setAddress(e.target.value)} />
+                    <Input id="sys-address" value={settings.address} onChange={(e) => handleChange('address', e.target.value)} />
                   </div>
                 </div>
               </CardContent>

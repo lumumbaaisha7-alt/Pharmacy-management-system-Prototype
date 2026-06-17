@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -15,11 +15,11 @@ import {
 } from "../../components/ui/sheet";
 import { Search, Barcode, Plus, Minus, Trash2, CreditCard, Banknote, Smartphone, Receipt, Printer, X, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import { MEDICINES_DATA } from "../Medicines/data";
 import { Medicine } from "../../types";
 import { CheckoutModal } from "./CheckoutModal";
 import { ReceiptModal } from "./ReceiptModal";
 import Swal from "sweetalert2";
+import api from "../../lib/api";
 
 export interface CartItem {
   medicine: Medicine;
@@ -37,17 +37,31 @@ export function POS() {
   const [lastReceiptData, setLastReceiptData] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Card" | "Mobile">("Cash");
 
-  const categories = ["All", ...Array.from(new Set(MEDICINES_DATA.map(m => m.category)))];
+  const [medicinesData, setMedicinesData] = useState<Medicine[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/medicines').then(res => {
+      setMedicinesData(res.data);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      toast.error("Failed to load medicines");
+      setLoading(false);
+    });
+  }, []);
+
+  const categories = ["All", ...Array.from(new Set(medicinesData.map(m => m.category)))];
 
   const filteredMedicines = useMemo(() => {
-    return MEDICINES_DATA.filter(m => {
+    return medicinesData.filter(m => {
       const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            m.genericName.toLowerCase().includes(searchTerm.toLowerCase());
+                            (m.genericName || "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === "All" || m.category === selectedCategory;
       const matchesBarcode = barcode === "" || m.barcode === barcode;
       return matchesSearch && matchesCategory && matchesBarcode;
     });
-  }, [searchTerm, selectedCategory, barcode]);
+  }, [searchTerm, selectedCategory, barcode, medicinesData]);
 
   // Pricing
   const subtotal = cart.reduce((sum, item) => sum + item.medicine.sellingPrice * item.quantity, 0);
@@ -99,7 +113,7 @@ export function POS() {
     e.preventDefault();
     if (!barcode) return;
     
-    const medicine = MEDICINES_DATA.find(m => m.barcode === barcode);
+    const medicine = medicinesData.find(m => m.barcode === barcode);
     if (medicine) {
       addToCart(medicine);
       setBarcode("");
@@ -348,14 +362,12 @@ export function POS() {
         {cart.length > 0 && (
           <div className="lg:hidden fixed bottom-20 left-4 right-4 z-40">
             <Sheet>
-              <SheetTrigger asChild>
-                <Button className="w-full h-14 rounded-full shadow-2xl shadow-primary/40 flex justify-between px-6 text-lg">
-                  <div className="flex items-center gap-2">
-                    <ShoppingBag className="h-5 w-5" />
-                    <span>View Cart ({cart.reduce((s,i)=>s+i.quantity, 0)})</span>
-                  </div>
-                  <span className="font-mono">{formatCurrency(total)}</span>
-                </Button>
+              <SheetTrigger render={<Button className="w-full h-14 rounded-full shadow-2xl shadow-primary/40 flex justify-between px-6 text-lg" />}>
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="h-5 w-5" />
+                  <span>View Cart ({cart.reduce((s,i)=>s+i.quantity, 0)})</span>
+                </div>
+                <span className="font-mono">{formatCurrency(total)}</span>
               </SheetTrigger>
               <SheetContent side="bottom" className="h-[85vh] p-0 flex flex-col rounded-t-3xl border-t shadow-2xl">
                 <SheetHeader className="p-4 border-b pt-6">
@@ -382,20 +394,43 @@ export function POS() {
         onOpenChange={setIsCheckoutOpen}
         total={total}
         paymentMethod={paymentMethod}
-        onComplete={(receiptData) => {
+        onComplete={async (receiptData) => {
           setIsCheckoutOpen(false);
-          setLastReceiptData({
-            cart: [...cart],
-            total,
-            subtotal,
-            tax,
-            paymentMethod: receiptData.method,
-            change: receiptData.change,
-            amountGiven: receiptData.amountGiven || total
-          });
-          setCart([]);
-          toast.success("Transaction Complete");
-          setIsReceiptOpen(true);
+          try {
+            const res = await api.post('/sales', {
+              cashierId: 'current-user', 
+              subtotal, 
+              tax, 
+              discount: 0, 
+              total, 
+              paymentMethod: receiptData.method, 
+              amountGiven: receiptData.amountGiven || total, 
+              changeGiven: receiptData.change || 0,
+              items: cart.map(item => ({
+                medicineId: item.medicine.id,
+                medicineName: item.medicine.name,
+                quantity: item.quantity,
+                unitPrice: item.medicine.sellingPrice,
+                totalPrice: item.medicine.sellingPrice * item.quantity
+              }))
+            });
+
+            setLastReceiptData({
+              receiptNumber: res.data.receiptNumber || `INV-${Math.floor(Math.random() * 10000)}`,
+              cart: [...cart],
+              total,
+              subtotal,
+              tax,
+              paymentMethod: receiptData.method,
+              change: receiptData.change,
+              amountGiven: receiptData.amountGiven || total
+            });
+            setCart([]);
+            toast.success("Transaction Complete");
+            setIsReceiptOpen(true);
+          } catch(err) {
+            toast.error("Checkout failed, try again");
+          }
         }}
       />
 

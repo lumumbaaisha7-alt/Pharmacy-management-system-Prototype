@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -21,16 +21,18 @@ import {
   DropdownMenuGroup,
 } from "../../components/ui/dropdown-menu";
 import { Plus, Search, MoreVertical, Edit, Eye, Trash, Download, Filter } from "lucide-react";
-import { MEDICINES_DATA } from "./data";
 import { Medicine } from "../../types";
 import { MedicineFormModal } from "./MedicineFormModal";
 import { MedicineViewModal } from "./MedicineViewModal";
 import { toast } from "sonner";
 import Swal from "sweetalert2";
 import { Checkbox } from "../../components/ui/checkbox";
+import { TableSkeleton } from "../../components/ui/TableSkeleton";
+import api from "../../lib/api";
 
 export function Medicines() {
-  const [data, setData] = useState<Medicine[]>(MEDICINES_DATA);
+  const [data, setData] = useState<Medicine[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
   // Modals state
@@ -45,6 +47,22 @@ export function Medicines() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
+  const fetchMedicines = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/medicines');
+      setData(res.data);
+    } catch (err) {
+      toast.error("Failed to load medicines");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMedicines();
+  }, []);
+
   function downToNull() {
     return useState<Medicine | null>(null);
   }
@@ -53,8 +71,8 @@ export function Medicines() {
   const filteredData = useMemo(() => {
     return data.filter(item => 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      item.genericName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.genericName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.category || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [data, searchTerm]);
@@ -89,25 +107,35 @@ export function Medicines() {
       confirmButtonColor: '#d33',
       cancelButtonColor: 'var(--color-primary)',
       confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        setData(prev => prev.filter(m => m.id !== medicine.id));
-        toast.success("Medicine deleted successfully");
+        try {
+          await api.delete(`/medicines/${medicine.id}`);
+          toast.success("Medicine deleted successfully");
+          fetchMedicines();
+        } catch (err) {
+          toast.error("Failed to delete medicine");
+        }
       }
     });
   };
 
-  const handleSave = (savedMedicine: Medicine) => {
-    if (currentMedicine) {
-      // Edit
-      setData(prev => prev.map(m => m.id === savedMedicine.id ? savedMedicine : m));
-      toast.success("Medicine updated successfully");
-    } else {
-      // Add
-      setData(prev => [savedMedicine, ...prev]);
-      toast.success("Medicine added successfully");
+  const handleSave = async (savedMedicine: Medicine) => {
+    try {
+      if (currentMedicine) {
+        // Edit
+        await api.put(`/medicines/${savedMedicine.id}`, savedMedicine);
+        toast.success("Medicine updated successfully");
+      } else {
+        // Add
+        await api.post('/medicines', savedMedicine);
+        toast.success("Medicine added successfully");
+      }
+      setIsFormOpen(false);
+      fetchMedicines();
+    } catch (err) {
+      toast.error("An error occurred while saving");
     }
-    setIsFormOpen(false);
   };
 
   const toggleSelectAll = () => {
@@ -143,13 +171,31 @@ export function Medicines() {
       confirmButtonColor: '#d33',
       cancelButtonColor: 'var(--color-primary)',
       confirmButtonText: 'Yes, delete them!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        setData(prev => prev.filter(m => !selectedIds.has(m.id)));
-        setSelectedIds(new Set());
-        toast.success(`${selectedIds.size} medicines deleted successfully`);
+        try {
+          await Promise.all(Array.from(selectedIds).map(id => api.delete(`/medicines/${id}`)));
+          toast.success(`${selectedIds.size} medicines deleted successfully`);
+          setSelectedIds(new Set());
+          fetchMedicines();
+        } catch(err) {
+          toast.error("Failed to delete some medicines");
+        }
       }
     });
+  };
+
+  const handleExport = async () => {
+    try {
+      const response = await api.get('/exports/medicines/excel', { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `medicines_inventory.xlsx`;
+      link.click();
+    } catch (error) {
+      toast.error("Export failed");
+    }
   };
 
   return (
@@ -163,7 +209,7 @@ export function Medicines() {
             <p className="text-gray-500 mt-1">Manage pharmacy inventory, pricing, and stock alerts.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="hidden sm:flex items-center gap-2">
+            <Button variant="outline" className="hidden sm:flex items-center gap-2" onClick={handleExport}>
               <Download className="h-4 w-4" /> Export
             </Button>
             <Button onClick={handleAdd} className="flex items-center gap-2">
@@ -227,7 +273,9 @@ export function Medicines() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.length > 0 ? (
+                  {loading ? (
+                    <TableRow><TableCell colSpan={8} className="p-0"><TableSkeleton rows={5} cols={7} /></TableCell></TableRow>
+                  ) : paginatedData.length > 0 ? (
                     paginatedData.map((medicine) => (
                       <TableRow key={medicine.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
                         <TableCell className="pl-4">

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -11,16 +11,18 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { Input } from "../../components/ui/input";
-import { Plus, Search, Filter, History, PackageOpen, ArrowRightLeft, ShieldAlert } from "lucide-react";
-import { INVENTORY_HISTORY_DATA } from "./data";
-import { InventoryTransaction, InventoryActionType } from "../../types";
-import { MEDICINES_DATA } from "../Medicines/data";
+import { Plus, Search, Filter, History, PackageOpen, ArrowRightLeft, ShieldAlert, Loader2 } from "lucide-react";
+import { InventoryTransaction, InventoryActionType, Medicine } from "../../types";
 import { StockActionModal } from "./StockActionModal";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { TableSkeleton } from "../../components/ui/TableSkeleton";
+import api from "../../lib/api";
 
 export function Inventory() {
-  const [history, setHistory] = useState<InventoryTransaction[]>(INVENTORY_HISTORY_DATA);
+  const [history, setHistory] = useState<InventoryTransaction[]>([]);
+  const [medicinesData, setMedicinesData] = useState<Medicine[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isStockActionOpen, setIsStockActionOpen] = useState(false);
 
@@ -28,11 +30,31 @@ export function Inventory() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [histRes, medRes] = await Promise.all([
+        api.get('/inventory/transactions'),
+        api.get('/medicines')
+      ]);
+      setHistory(histRes.data);
+      setMedicinesData(medRes.data);
+    } catch(err) {
+      toast.error("Failed to load inventory data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const filteredHistory = useMemo(() => {
     return history.filter(item => 
       item.medicineName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.reason.toLowerCase().includes(searchTerm.toLowerCase())
+      (item.reason || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [history, searchTerm]);
 
@@ -42,17 +64,23 @@ export function Inventory() {
     return filteredHistory.slice(start, start + itemsPerPage);
   }, [filteredHistory, currentPage]);
 
-  const handleStockActionSave = (data: Omit<InventoryTransaction, "id" | "date" | "performer">) => {
-    const newTxn: InventoryTransaction = {
-      ...data,
-      id: `TXN-${Math.floor(Math.random() * 10000)}`,
-      date: new Date().toISOString(),
-      performer: "System Admin"
-    };
-
-    setHistory(prev => [newTxn, ...prev]);
-    setIsStockActionOpen(false);
-    toast.success(`Successfully processed ${data.type} action for ${data.medicineName}`);
+  const handleStockActionSave = async (data: Omit<InventoryTransaction, "id" | "date" | "performer">) => {
+    try {
+      await api.post('/inventory/transactions', {
+        type: data.type,
+        medicineId: data.medicineId,
+        medicineName: data.medicineName,
+        quantity: data.quantity,
+        reason: data.reason,
+        reference: data.reference,
+        performer: "Current User" // Usually managed by backend using JWT
+      });
+      setIsStockActionOpen(false);
+      toast.success(`Successfully processed ${data.type} action for ${data.medicineName}`);
+      fetchData(); // reload history and medicine stock
+    } catch(err) {
+      toast.error("Failed to process transaction");
+    }
   };
 
   const getActionColor = (type: InventoryActionType) => {
@@ -162,7 +190,9 @@ export function Inventory() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedHistory.length > 0 ? (
+                  {loading ? (
+                    <TableRow><TableCell colSpan={7} className="p-0"><TableSkeleton rows={5} cols={7} /></TableCell></TableRow>
+                  ) : paginatedHistory.length > 0 ? (
                     paginatedHistory.map((txn) => (
                       <TableRow key={txn.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
                         <TableCell className="text-xs text-gray-500 whitespace-nowrap">
@@ -236,7 +266,7 @@ export function Inventory() {
       <StockActionModal 
         open={isStockActionOpen} 
         onOpenChange={setIsStockActionOpen} 
-        medicines={MEDICINES_DATA}
+        medicines={medicinesData}
         onSave={handleStockActionSave}
       />
 
