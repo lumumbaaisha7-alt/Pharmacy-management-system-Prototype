@@ -28,8 +28,9 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req: any, res) => {
-  const connection = await pool.getConnection();
+  let connection;
   try {
+    connection = await pool.getConnection();
     const sale = req.body;
     await connection.beginTransaction();
 
@@ -61,12 +62,12 @@ router.post('/', async (req: any, res) => {
     }
 
     await connection.commit();
-    res.status(201).json({ message: 'Sale completed', receipt_number: receiptNumber });
+    res.status(201).json({ message: 'Sale completed', receiptNumber });
   } catch (error) {
     await connection.rollback();
     res.status(500).json({ error: 'Server error' });
   } finally {
-    connection.release();
+    if (connection) connection.release();
   }
 });
 

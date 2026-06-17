@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_medicines_category ON medicines(category);
-CREATE INDEX idx_inventory_date ON inventory_transactions(date);
-CREATE INDEX idx_sales_date ON sales(created_at);
+CREATE INDEX IF NOT EXISTS idx_medicines_category ON medicines(category);
+CREATE INDEX IF NOT EXISTS idx_inventory_date ON inventory_transactions(date);
+CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(created_at);
+

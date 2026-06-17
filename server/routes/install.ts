@@ -4,6 +4,16 @@ import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path from 'path';
 
+async function testDbConnection(): Promise<boolean> {
+  try {
+    await pool.query('SELECT 1');
+    return true;
+  } catch (err: any) {
+    console.error('DB Connection test failed:', err?.message);
+    return false;
+  }
+}
+
 const router = Router();
 
 let installStatus = { step: 0, progress: 0, message: 'Ready', error: null as string | null, complete: false };
@@ -13,6 +23,11 @@ router.get('/status', (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+  const dbOk = await testDbConnection();
+  if (!dbOk) {
+    return res.status(500).json({ error: 'Cannot connect to database. Check DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME environment variables.' });
+  }
+
   try {
     const { pharmacyDetails, adminDetails, branding } = req.body;
     
@@ -35,14 +50,26 @@ router.post('/', async (req, res) => {
 
     // Run installation asynchronously
     (async () => {
-      const connection = await pool.getConnection();
+      let connection;
       try {
+        connection = await pool.getConnection();
         const schemaPath = path.join(process.cwd(), 'server', 'migrations', '001_schema.sql');
         const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-        const statements = schemaSql.split(';').filter((stmt: string) => stmt.trim() !== '');
+        const statements = schemaSql
+          .split(';')
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0 && !s.startsWith('--'));
         
         for (const statement of statements) {
-          await connection.query(statement);
+          try {
+            await connection.query(statement);
+          } catch (stmtErr: any) {
+            // Allow duplicate index errors (code 1061) to pass silently
+            if (stmtErr?.errno !== 1061 && stmtErr?.errno !== 1050) {
+              throw stmtErr;
+            }
+            console.warn('Skipping already-exists error:', stmtErr?.message);
+          }
         }
 
         installStatus = { step: 2, progress: 40, message: 'Setting up admin user...', error: null, complete: false };
@@ -91,10 +118,16 @@ router.post('/', async (req, res) => {
 
         installStatus = { step: 5, progress: 100, message: 'Installation complete', error: null, complete: true };
       } catch (err: any) {
-        console.error("Install Error", err);
-        installStatus = { step: -1, progress: 0, message: 'Installation failed', error: err.message, complete: false };
+        console.error("=== INSTALL ERROR ===", err?.message, err?.stack);
+        installStatus = { 
+          step: -1, 
+          progress: 0, 
+          message: 'Installation failed: ' + (err?.message || 'Unknown error'), 
+          error: err?.message || 'Unknown error', 
+          complete: false 
+        };
       } finally {
-        connection.release();
+        if (connection) connection.release();
       }
     })();
   } catch (err: any) {

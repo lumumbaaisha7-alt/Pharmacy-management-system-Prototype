@@ -77,11 +77,13 @@ export function Header() {
           <ThemeToggle />
           
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative rounded-full" />}>
-              <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-              {alertCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-900" />
-              )}
+            <DropdownMenuTrigger>
+              <Button variant="ghost" size="icon" className="relative rounded-full">
+                <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                {alertCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-900" />
+                )}
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel className="flex items-center justify-between">

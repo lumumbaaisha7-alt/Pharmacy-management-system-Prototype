@@ -38,8 +38,9 @@ router.get('/transactions', async (req, res) => {
 });
 
 router.post('/transactions', async (req, res) => {
-  const connection = await pool.getConnection();
+  let connection;
   try {
+    connection = await pool.getConnection();
     const tx = req.body;
     await connection.beginTransaction();
 
@@ -59,10 +60,10 @@ router.post('/transactions', async (req, res) => {
     await connection.commit();
     res.status(201).json({ message: 'Transaction created' });
   } catch (error) {
-    await connection.rollback();
+    if (connection) await connection.rollback();
     res.status(500).json({ error: 'Server error' });
   } finally {
-    connection.release();
+    if (connection) connection.release();
   }
 });
 

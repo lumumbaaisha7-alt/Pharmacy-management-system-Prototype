@@ -64,11 +64,11 @@ router.get('/expiring-soon', async (req, res) => {
 router.get('/inventory-valuation', async (req, res) => {
   try {
     const [rows]: any = await pool.query(
-      `SELECT category, SUM(stock * buy_price) as total_value, COUNT(*) as item_count 
+      `SELECT category, SUM(stock * purchase_price) as total_value, COUNT(*) as item_count 
        FROM medicines 
        GROUP BY category`
     );
-    const [grandTotal]: any = await pool.query(`SELECT SUM(stock * buy_price) as grand_total FROM medicines`);
+    const [grandTotal]: any = await pool.query(`SELECT SUM(stock * purchase_price) as grand_total FROM medicines`);
     res.json({ categories: rows, grand_total: grandTotal[0]?.grand_total || 0 });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });

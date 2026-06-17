@@ -18,7 +18,7 @@ import exportRoutes from './server/routes/exports';
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = parseInt(process.env.PORT as string || "3000", 10);
 
   // Middleware
   app.use(cors({
@@ -40,6 +40,15 @@ async function startServer() {
   app.use('/api/reports', reportsRoutes);
   app.use('/api/install', installRoutes);
   app.use('/api/exports', exportRoutes);
+
+  // Global error handler
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error("=== GLOBAL ERROR HANDLER ===", err);
+    res.status(500).json({ 
+      error: "Internal Server Error", 
+      message: err?.message || "Unknown error" 
+    });
+  });
 
   // Vite middleware for development or Static files for production
   if (process.env.NODE_ENV !== "production") {

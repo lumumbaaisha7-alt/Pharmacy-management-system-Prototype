@@ -57,11 +57,11 @@ router.get('/medicines/pdf', async (req, res) => {
     doc.font('Helvetica');
     medicines.forEach((m: any) => {
       if (y > 700) { doc.addPage(); y = 50; }
-      doc.text(m.name.substring(0, 25), 30, y);
+      doc.text((m.name || 'Unknown').substring(0, 25), 30, y);
       doc.text(m.category || '-', 180, y);
-      doc.text(m.stock.toString(), 300, y);
-      doc.text(Number(m.selling_price).toLocaleString(), 380, y);
-      doc.text(new Date(m.expiry_date).toLocaleDateString(), 480, y);
+      doc.text((m.stock || 0).toString(), 300, y);
+      doc.text(Number(m.selling_price || 0).toLocaleString(), 380, y);
+      doc.text(m.expiry_date ? new Date(m.expiry_date).toLocaleDateString() : '-', 480, y);
       y += 20;
     });
 
@@ -102,11 +102,11 @@ router.get('/sales/pdf', async (req, res) => {
     doc.font('Helvetica');
     sales.forEach((s: any) => {
       if (y > 700) { doc.addPage(); y = 50; }
-      doc.text(s.receipt_number, 30, y);
-      doc.text(new Date(s.created_at).toLocaleString(), 130, y);
+      doc.text(s.receipt_number || '-', 30, y);
+      doc.text(s.created_at ? new Date(s.created_at).toLocaleString() : '-', 130, y);
       doc.text(s.payment_method || '-', 250, y);
-      doc.text(Number(s.subtotal).toLocaleString(), 350, y);
-      doc.text(Number(s.total).toLocaleString(), 450, y);
+      doc.text(Number(s.subtotal || 0).toLocaleString(), 350, y);
+      doc.text(Number(s.total || 0).toLocaleString(), 450, y);
       y += 20;
     });
 
@@ -145,10 +145,10 @@ router.get('/inventory/pdf', async (req, res) => {
     doc.font('Helvetica');
     movements.forEach((m: any) => {
       if (y > 700) { doc.addPage(); y = 50; }
-      doc.text(new Date(m.created_at).toLocaleString(), 30, y);
-      doc.text(m.medicine_name.substring(0, 25), 130, y);
-      doc.text(m.type, 300, y);
-      doc.text(m.quantity.toString(), 380, y);
+      doc.text(m.created_at ? new Date(m.created_at).toLocaleString() : '-', 30, y);
+      doc.text((m.medicine_name || 'Unknown').substring(0, 25), 130, y);
+      doc.text(m.type || '-', 300, y);
+      doc.text((m.quantity || 0).toString(), 380, y);
       doc.text((m.reason || '-').substring(0, 20), 430, y);
       y += 20;
     });
@@ -180,7 +180,7 @@ router.get('/medicines/excel', async (req, res) => {
     medicines.forEach((m: any) => {
       worksheet.addRow({
         ...m,
-        expiry_date: new Date(m.expiry_date).toLocaleDateString()
+        expiry_date: m.expiry_date ? new Date(m.expiry_date).toLocaleDateString() : '-'
       });
     });
 
@@ -213,7 +213,7 @@ router.get('/sales/excel', async (req, res) => {
     sales.forEach((s: any) => {
       worksheet.addRow({
         ...s,
-        created_at: new Date(s.created_at).toLocaleString()
+        created_at: s.created_at ? new Date(s.created_at).toLocaleString() : '-'
       });
     });
 
