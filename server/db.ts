@@ -2,99 +2,23 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Add validation for DB_NAME immediately
-const validateDatabaseConfig = () => {
-  const requiredVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME'];
-  const missing = [];
-  
-  for (const varName of requiredVars) {
-    const value = process.env[varName];
-    if (!value || value.trim() === '') {
-      missing.push(varName);
-    }
-  }
-  
-  if (missing.length > 0) {
-    throw new Error(`❌ Missing required database configuration: ${missing.join(', ')}`);
-  }
-};
-
-// Validate before logging
-validateDatabaseConfig();
-
-// Log database configuration on startup
-console.log('=== DATABASE CONFIGURATION ===');
-console.log('DB_HOST:', process.env.DB_HOST);
-console.log('DB_PORT:', process.env.DB_PORT);
-console.log('DB_USER:', process.env.DB_USER);
-console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : 'NOT SET');
-console.log('DB_NAME:', process.env.DB_NAME);  // This should now always have a value
-console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
-console.log('==============================\n');
-
-// Determine SSL configuration based on environment
-const getSSLConfig = () => {
-  const host = process.env.DB_HOST || 'localhost';
-  
-  // For Railway and cloud deployments (not localhost)
-  if (host && host !== 'localhost' && host !== '127.0.0.1') {
-    console.log('🔒 Remote database detected, enabling SSL...');
-    
-    // For Railway: use rejectUnauthorized: true for secure connections
-    // Railway provides proper certificates
-    return {
-      rejectUnauthorized: true,
-      minVersion: 'TLSv1.2' as any
-    };
-  }
-  
-  // For local development
-  return undefined;
-};
-
 export const pool = mysql.createPool({
-  host: process.env.DB_HOST!,
+  host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER!,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME!,  // Force non-null after validation
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'pharmaflow',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   connectTimeout: 60000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
-  ssl: getSSLConfig(),
-  // Connection attributes for better diagnostics
-  connectionAttributes: {
-    _client_name: 'pharmacy-management-system',
-    _client_version: '1.0.0'
-  }
+  ssl: (process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') 
+    ? { rejectUnauthorized: false } 
+    : undefined,
 });
 
-// Enhanced error logging
-pool.on('error', (err: any) => {
-  console.error('❌ Unexpected error on idle client:', {
-    code: err?.code,
-    errno: err?.errno,
-    message: err?.message,
-    sqlState: err?.sqlState
-  });
-});
-
-// Log successful pool creation
-pool.on('connection', () => {
-  console.log('✅ New database connection established');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  pool.end((err) => {
-    if (err) {
-      console.error('Error closing database pool:', err);
-    } else {
-      console.log('Database pool closed');
-    }
-  });
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
 });
