@@ -14,9 +14,9 @@ export const pool = mysql.createPool({
   connectTimeout: 60000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
-  ssl: ((process.env.DB_HOST || process.env.MYSQLHOST) && process.env.DB_HOST !== 'localhost' && process.env.MYSQLHOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') 
+  ssl: ((process.env.DB_HOST || process.env.MYSQLHOST || '').includes('.internal')) ? undefined : (((process.env.DB_HOST || process.env.MYSQLHOST) && process.env.DB_HOST !== 'localhost' && process.env.MYSQLHOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') 
     ? { rejectUnauthorized: false } 
-    : undefined,
+    : undefined),
 });
 
 

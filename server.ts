@@ -18,7 +18,7 @@ import exportRoutes from './server/routes/exports';
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 8080;
 
   // Middleware
   app.use(cors({
