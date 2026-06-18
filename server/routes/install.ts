@@ -2,13 +2,45 @@ import { Router } from 'express';
 import { pool } from '../db';
 import bcrypt from 'bcrypt';
 
-async function testDbConnection(): Promise<boolean> {
+async function testDbConnection(): Promise<{ success: boolean; error?: string; details?: any }> {
   try {
-    await pool.query('SELECT 1');
-    return true;
+    console.log('=== DATABASE CONNECTION TEST ===');
+    console.log('DB Config:', {
+      host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST || 'localhost',
+      port: process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || '3306',
+      user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER || 'root',
+      database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'pharmaflow',
+      allEnvVars: Object.keys(process.env).filter(k => k.includes('DB') || k.includes('MYSQL')).reduce((acc, key) => {
+        acc[key] = process.env[key]?.substring(0, 10) + '...';
+        return acc;
+      }, {} as any)
+    });
+
+    const connection = await pool.getConnection();
+    console.log('✓ Pool connection acquired');
+    
+    const result = await connection.query('SELECT 1 as connected');
+    console.log('✓ SELECT 1 query successful');
+    
+    connection.release();
+    return { success: true };
   } catch (err: any) {
-    console.error('DB Connection test failed:', err?.message);
-    return false;
+    console.error('❌ DB Connection test failed:', {
+      message: err?.message,
+      code: err?.code,
+      errno: err?.errno,
+      sqlState: err?.sqlState,
+      stack: err?.stack
+    });
+    return { 
+      success: false, 
+      error: err?.message || 'Unknown connection error',
+      details: {
+        code: err?.code,
+        errno: err?.errno,
+        sqlState: err?.sqlState
+      }
+    };
   }
 }
 
@@ -21,9 +53,22 @@ router.get('/status', (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const dbOk = await testDbConnection();
-  if (!dbOk) {
-    return res.status(500).json({ error: 'Cannot connect to database. Check DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME environment variables.' });
+  console.log('=== INSTALL ENDPOINT CALLED ===');
+  console.log('Request body:', {
+    pharmacyDetails: req.body.pharmacyDetails?.name,
+    adminDetails: req.body.adminDetails?.email,
+    branding: req.body.branding?.currency
+  });
+
+  const dbTest = await testDbConnection();
+  
+  if (!dbTest.success) {
+    console.error('Database connection test failed. Details:', dbTest.details);
+    return res.status(500).json({ 
+      error: 'Cannot connect to database',
+      details: dbTest.details,
+      message: `Check environment variables. Error: ${dbTest.error}`
+    });
   }
 
   try {
@@ -37,6 +82,7 @@ router.post('/', async (req, res) => {
       }
     } catch(e) {
       // Table might not exist yet, ignore
+      console.log('Settings table not found yet (expected on first run)');
     }
 
     if (isInstalled) {
@@ -51,6 +97,8 @@ router.post('/', async (req, res) => {
       let connection;
       try {
         connection = await pool.getConnection();
+        console.log('=== STARTING INSTALLATION PROCESS ===');
+        
         const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS \`users\` (
   \`id\` INT AUTO_INCREMENT PRIMARY KEY,
@@ -123,28 +171,24 @@ CREATE TABLE IF NOT EXISTS \`settings\` (
           .map((s: string) => s.trim())
           .filter((s: string) => s.length > 0 && !s.startsWith('--'));
         
-        for (const statement of statements) {
+        console.log(`Executing ${statements.length} SQL statements`);
+        
+        for (const [idx, statement] of statements.entries()) {
           try {
+            console.log(`[${idx + 1}/${statements.length}] Executing: ${statement.substring(0, 50)}...`);
             await connection.query(statement);
+            console.log(`✓ Statement ${idx + 1} completed`);
           } catch (stmtErr: any) {
-            // Allow duplicate index errors (code 1061) to pass silently
+            console.warn(`Statement ${idx + 1} error:`, stmtErr?.errno, stmtErr?.message);
+            // Allow duplicate index errors (code 1061) and table exists (1050) to pass silently
             if (stmtErr?.errno !== 1061 && stmtErr?.errno !== 1050) {
               throw stmtErr;
             }
-            console.warn('Skipping already-exists error:', stmtErr?.message);
+            console.warn(`Skipping error (errno: ${stmtErr?.errno}): ${stmtErr?.message}`);
           }
         }
 
-        // Create indexes safely (ignore if already exist)
-        const indexes = [
-          'CREATE INDEX idx_medicines_category ON medicines(category)',
-          'CREATE INDEX idx_inventory_date ON inventory_transactions(date)',
-          'CREATE INDEX idx_sales_date ON sales(created_at)'
-        ];
-        for (const idx of indexes) {
-          try { await connection.query(idx); } catch (e: any) { /* ignore errno 1061 duplicate */ }
-        }
-
+        console.log('✓ All tables created successfully');
         installStatus = { step: 2, progress: 40, message: 'Setting up admin user...', error: null, complete: false };
         
         const passwordHash = await bcrypt.hash(adminDetails.password, 10);
@@ -152,6 +196,7 @@ CREATE TABLE IF NOT EXISTS \`settings\` (
           `INSERT IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)`,
           [adminDetails.name, adminDetails.email, passwordHash, 'admin']
         );
+        console.log('✓ Admin user created');
 
         installStatus = { step: 3, progress: 60, message: 'Configuring settings...', error: null, complete: false };
 
@@ -172,14 +217,15 @@ CREATE TABLE IF NOT EXISTS \`settings\` (
         for (const [key, val] of settings) {
           await connection.query(`INSERT IGNORE INTO settings (key_name, value_data) VALUES (?, ?)`, [key, val]);
         }
+        console.log('✓ Settings configured');
 
         installStatus = { step: 4, progress: 80, message: 'Adding sample medicines...', error: null, complete: false };
 
         const medicines = [
-          { id: "MED-001", name: "Amoxicillin 500mg", generic_name: "Amoxicillin", category: "Antibiotics", stock: 125, min: 50, selling_price: 2500, purchase_price: 1500, expiry_date: "2026-10-15", batch: "B-2024", barcode: "89012345678" },
-          { id: "MED-002", name: "Paracetamol 500mg", generic_name: "Acetaminophen", category: "Analgesics", stock: 450, min: 100, selling_price: 500, purchase_price: 200, expiry_date: "2027-05-20", batch: "P-1123", barcode: "89023456789" },
-          { id: "MED-003", name: "Ibuprofen 400mg", generic_name: "Ibuprofen", category: "NSAIDs", stock: 200, min: 100, selling_price: 1000, purchase_price: 600, expiry_date: "2026-12-01", batch: "I-2331", barcode: "89034567890" },
-          { id: "MED-004", name: "Vitamin C 1000mg", generic_name: "Ascorbic Acid", category: "Vitamins", stock: 320, min: 50, selling_price: 1500, purchase_price: 800, expiry_date: "2025-08-10", batch: "V-9901", barcode: "89045678901" }
+          { id: "MED-001", name: "Amoxicillin 500mg", generic_name: "Amoxicillin", category: "Antibiotics", stock: 125, min: 50, selling_price: 2500, purchase_price: 1500, expiry_date: "2026-10-15", batch: "AMO-001", barcode: "7891234567890" },
+          { id: "MED-002", name: "Paracetamol 500mg", generic_name: "Acetaminophen", category: "Analgesics", stock: 450, min: 100, selling_price: 500, purchase_price: 200, expiry_date: "2027-05-20", batch: "PAR-001", barcode: "7891234567891" },
+          { id: "MED-003", name: "Ibuprofen 400mg", generic_name: "Ibuprofen", category: "NSAIDs", stock: 200, min: 100, selling_price: 1000, purchase_price: 600, expiry_date: "2026-12-01", batch: "IBU-001", barcode: "7891234567892" },
+          { id: "MED-004", name: "Vitamin C 1000mg", generic_name: "Ascorbic Acid", category: "Vitamins", stock: 320, min: 50, selling_price: 1500, purchase_price: 800, expiry_date: "2025-08-10", batch: "VIT-001", barcode: "7891234567893" }
         ];
 
         for (const med of medicines) {
@@ -188,10 +234,19 @@ CREATE TABLE IF NOT EXISTS \`settings\` (
             [med.id, med.name, med.generic_name, med.category, med.batch, med.barcode, med.stock, med.purchase_price, med.selling_price, med.expiry_date]
           );
         }
+        console.log('✓ Sample medicines added');
 
         installStatus = { step: 5, progress: 100, message: 'Installation complete', error: null, complete: true };
+        console.log('=== INSTALLATION COMPLETED SUCCESSFULLY ===');
       } catch (err: any) {
-        console.error("=== INSTALL ERROR ===", err?.message, err?.stack);
+        console.error("=== INSTALL ERROR ===", err?.message);
+        console.error("Error details:", {
+          code: err?.code,
+          errno: err?.errno,
+          sqlState: err?.sqlState,
+          sql: err?.sql,
+          stack: err?.stack
+        });
         installStatus = { 
           step: -1, 
           progress: 0, 
@@ -204,6 +259,7 @@ CREATE TABLE IF NOT EXISTS \`settings\` (
       }
     })();
   } catch (err: any) {
+    console.error('POST /install error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
