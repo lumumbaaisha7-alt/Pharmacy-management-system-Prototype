@@ -48,7 +48,12 @@ function AppContent() {
       return;
     }
 
-    if (isAppInstalled && location !== "/install") {
+    if (isAppInstalled && location === "/install") {
+      setLocation("/");
+      return;
+    }
+
+    if (isAppInstalled) {
       if (!isAuthLoading) {
         if (!user && location !== "/") {
           setLocation("/");

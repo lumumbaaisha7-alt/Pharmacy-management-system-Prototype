@@ -49,37 +49,39 @@ export function Header() {
 
   return (
     <>
-      <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 md:px-6 shrink-0 relative z-10 sticky top-0">
+      <header className="h-16 bg-emerald-600 dark:bg-emerald-900 border-b border-emerald-700/50 flex items-center px-4 md:px-6 shrink-0 relative z-10 sticky top-0 text-white">
         
         {/* Mobile Branding */}
         <div className="md:hidden flex items-center gap-2 mr-4">
-          <div className="bg-primary p-1.5 rounded-lg">
+          <div className="bg-white/20 p-1.5 rounded-lg">
             {settings.logo_base64 ? (
               <img src={settings.logo_base64} alt="Logo" className="w-5 h-5 object-contain filter brightness-0 invert" />
             ) : (
               <div className="h-5 w-5 bg-white mask mask-pill" style={{ maskImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\'/%3E%3Cpath d=\'m8.5 8.5 7 7\'/%3E%3C/svg%3E")', maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center', backgroundColor: 'white' }} />
             )}
           </div>
-          <h1 className="font-bold text-lg dark:text-white truncate max-w-[150px]">{settings.pharmacy_name || "PharmaFlow"}</h1>
+          <h1 className="font-bold text-lg text-white truncate max-w-[150px]">{settings.pharmacy_name || "PharmaFlow"}</h1>
         </div>
 
         <div className="flex-1 max-w-xl hidden md:flex items-center">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-100" />
             <Input 
               placeholder="Search products, invoices, customers..." 
-              className="pl-10 w-full bg-gray-100 dark:bg-gray-800 border-transparent focus-visible:ring-1"
+              className="pl-10 w-full bg-emerald-700/50 dark:bg-emerald-950/50 border-transparent text-white placeholder:text-emerald-200 focus-visible:ring-1 focus-visible:ring-emerald-300"
             />
           </div>
         </div>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-4">
-          <ThemeToggle />
+          <div className="text-white">
+            <ThemeToggle />
+          </div>
           
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <Button variant="ghost" size="icon" className="relative rounded-full">
-                <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+              <Button variant="ghost" size="icon" className="relative rounded-full text-white hover:bg-emerald-700">
+                <Bell className="h-5 w-5" />
                 {alertCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-900" />
                 )}

@@ -156,20 +156,20 @@ export function Dashboard() {
         </div>
 
         {/* Compact KPI Cards Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
           
-          <Card className="col-span-2 bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shrink-0">
-                <ShoppingCart className="h-5 w-5 text-white" />
+          <Card className="col-span-2 bg-gradient-to-br from-primary/10 to-transparent border-primary/20 shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                <ShoppingCart className="h-6 w-6 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">Today's Sales</p>
-                <h3 className="text-xl font-bold font-mono tracking-tight text-gray-900 dark:text-white truncate">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Today's Sales</p>
+                <h3 className="text-2xl font-bold font-mono tracking-tight text-gray-900 dark:text-white truncate mt-1">
                   {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : formatCurrency(stats.todaySales)}
                 </h3>
                 {!loading && (
-                  <div className="flex items-center gap-1 mt-0.5 text-xs text-green-600 dark:text-green-400">
+                  <div className="flex items-center gap-1 mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 w-max px-2 py-0.5 rounded-full">
                     <ArrowUpRight className="h-3 w-3" />
                     <span>+18%</span>
                   </div>
@@ -178,63 +178,75 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-sm rounded-xl hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex flex-col justify-center h-full gap-2">
                <div className="flex justify-between items-start">
-                 <p className="text-xs font-medium text-gray-500">Monthly</p>
-                 <TrendingUp className="h-4 w-4 text-emerald-500" />
+                 <p className="text-sm font-medium text-gray-500">Monthly</p>
+                 <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                   <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                 </div>
                </div>
-               <h3 className="text-base font-bold font-mono truncate">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : formatCurrency(stats.monthlySales)}</h3>
+               <h3 className="text-lg font-bold font-mono truncate">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : formatCurrency(stats.monthlySales)}</h3>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-sm rounded-xl hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex flex-col justify-center h-full gap-2">
                <div className="flex justify-between items-start">
-                 <p className="text-xs font-medium text-gray-500">Medicines</p>
-                 <Package className="h-4 w-4 text-blue-500" />
+                 <p className="text-sm font-medium text-gray-500">Medicines</p>
+                 <div className="p-1.5 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                   <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                 </div>
                </div>
-               <h3 className="text-lg font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.totalMedicines}</h3>
+               <h3 className="text-xl font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.totalMedicines}</h3>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-sm rounded-xl hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex flex-col justify-center h-full gap-2">
                <div className="flex justify-between items-start">
-                 <p className="text-xs font-medium text-gray-500">Customers</p>
-                 <Users className="h-4 w-4 text-purple-500" />
+                 <p className="text-sm font-medium text-gray-500">Customers</p>
+                 <div className="p-1.5 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                   <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                 </div>
                </div>
-               <h3 className="text-lg font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.customersCount}</h3>
+               <h3 className="text-xl font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.customersCount}</h3>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="shadow-sm rounded-xl hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex flex-col justify-center h-full gap-2">
                <div className="flex justify-between items-start">
-                 <p className="text-xs font-medium text-gray-500">Suppliers</p>
-                 <Building2 className="h-4 w-4 text-indigo-500" />
+                 <p className="text-sm font-medium text-gray-500">Suppliers</p>
+                 <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
+                   <Building2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                 </div>
                </div>
-               <h3 className="text-lg font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.suppliersCount}</h3>
+               <h3 className="text-xl font-bold">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.suppliersCount}</h3>
             </CardContent>
           </Card>
 
-          <Card className="bg-orange-50 dark:bg-orange-950/20 border-orange-200">
+          <Card className="bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900 border-orange-200 shadow-sm rounded-xl hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex flex-col justify-center h-full gap-2">
                <div className="flex justify-between items-start">
-                 <p className="text-xs font-medium text-orange-600">Low Stock</p>
-                 <AlertTriangle className="h-4 w-4 text-orange-500" />
+                 <p className="text-sm font-medium text-orange-700 dark:text-orange-500">Low Stock</p>
+                 <div className="p-1.5 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                   <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                 </div>
                </div>
-               <h3 className="text-lg font-bold text-orange-700">{loading ? <Loader2 className="h-4 w-4 animate-spin text-orange-500" /> : stats.lowStockCount}</h3>
+               <h3 className="text-xl font-bold text-orange-700 dark:text-orange-500">{loading ? <Loader2 className="h-4 w-4 animate-spin text-orange-500" /> : stats.lowStockCount}</h3>
             </CardContent>
           </Card>
 
-          <Card className="bg-red-50 dark:bg-red-950/20 border-red-200">
+          <Card className="bg-gradient-to-br from-red-50 to-white dark:from-red-950/20 dark:to-gray-900 border-red-200 shadow-sm rounded-xl hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex flex-col justify-center h-full gap-2">
                <div className="flex justify-between items-start">
-                 <p className="text-xs font-medium text-red-600">Expiring</p>
-                 <Clock className="h-4 w-4 text-red-500" />
+                 <p className="text-sm font-medium text-red-700 dark:text-red-500">Expiring</p>
+                 <div className="p-1.5 bg-red-100 dark:bg-red-900/50 rounded-lg">
+                   <Clock className="h-4 w-4 text-red-600 dark:text-red-400" />
+                 </div>
                </div>
-               <h3 className="text-lg font-bold text-red-700">{loading ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : stats.expiringSoonCount}</h3>
+               <h3 className="text-xl font-bold text-red-700 dark:text-red-500">{loading ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : stats.expiringSoonCount}</h3>
             </CardContent>
           </Card>
 
@@ -244,8 +256,8 @@ export function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Chart Section */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="lg:col-span-2 shadow-md rounded-2xl border-gray-200 dark:border-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gray-50/50 dark:bg-gray-900/50 border-b rounded-t-2xl">
               <div>
                 <CardTitle className="text-base font-semibold">Sales Trend</CardTitle>
                 <p className="text-xs text-gray-500 mt-1">Daily revenue performance</p>

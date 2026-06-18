@@ -97,7 +97,7 @@ export function Installer() {
       icon: "success",
       confirmButtonColor: "var(--color-primary)"
     }).then(() => {
-      setLocation("/");
+      window.location.href = "/";
     });
   };
 

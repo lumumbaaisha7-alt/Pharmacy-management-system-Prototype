@@ -146,37 +146,37 @@ export function POS() {
 
   // Reusable components
   const CartItemsList = () => (
-    <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 rounded-lg p-2 border">
+    <div className="flex-1 overflow-auto bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl p-3 border border-gray-200 dark:border-gray-800">
       {cart.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-gray-400">
-          <ShoppingCartIcon />
-          <p className="mt-4 text-sm font-medium">Cart is empty</p>
+          <ShoppingBag className="h-12 w-12 mb-2 text-gray-300 dark:text-gray-600" />
+          <p className="text-sm font-medium">Cart is empty</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {cart.map(item => (
-            <div key={item.medicine.id} className="bg-white dark:bg-gray-950 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 flex gap-3 relative group animate-in fade-in zoom-in-95 duration-200">
-              <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-bold text-lg shrink-0">
+            <div key={item.medicine.id} className="bg-white dark:bg-gray-950 p-3 rounded-xl shadow-sm hover:shadow-md border border-gray-100 dark:border-gray-800 flex gap-4 relative group animate-in fade-in zoom-in-95 duration-200">
+              <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-lg shrink-0 border border-emerald-100 dark:border-emerald-800">
                 {item.medicine.name.charAt(0)}
               </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-sm truncate pr-6">{item.medicine.name}</h4>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-primary font-mono text-xs font-semibold">{formatCurrency(item.medicine.sellingPrice)}</span>
-                  <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-md p-0.5">
-                    <button onClick={() => updateQuantity(item.medicine.id, -1)} className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded shadow-sm transition">
-                      <Minus className="h-3 w-3" />
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <h4 className="font-semibold text-sm truncate pr-6 text-gray-900 dark:text-gray-100">{item.medicine.name}</h4>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-emerald-700 dark:text-emerald-400 font-mono text-sm font-bold">{formatCurrency(item.medicine.sellingPrice)}</span>
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                    <button onClick={() => updateQuantity(item.medicine.id, -1)} className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm transition active:scale-95 text-gray-600 dark:text-gray-300">
+                      <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="text-xs font-medium w-4 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.medicine.id, 1)} className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded shadow-sm transition">
-                      <Plus className="h-3 w-3" />
+                    <span className="text-sm font-semibold w-6 text-center text-gray-900 dark:text-gray-100">{item.quantity}</span>
+                    <button onClick={() => updateQuantity(item.medicine.id, 1)} className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm transition active:scale-95 text-gray-600 dark:text-gray-300">
+                      <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
               </div>
               <button 
                 onClick={() => removeFromCart(item.medicine.id)}
-                className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md opacity-0 group-hover:opacity-100 transition-all md:opacity-100"
+                className="absolute -top-2 -right-2 p-1.5 text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:text-red-500 hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-full opacity-0 group-hover:opacity-100 transition-all md:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -188,65 +188,68 @@ export function POS() {
   );
 
   const CheckoutSummaryPanel = () => (
-    <Card className="flex flex-col h-full shadow-lg border-primary/10 bg-white/50 backdrop-blur-sm dark:bg-gray-950/50">
-      <CardHeader className="pb-3 px-4 pt-4 border-b bg-primary/5">
-        <CardTitle className="text-base flex justify-between items-center">
+    <Card className="flex flex-col h-full shadow-lg rounded-2xl border-primary/20 bg-white dark:bg-gray-900">
+      <CardHeader className="pb-4 px-5 pt-5 border-b bg-primary/5 rounded-t-2xl">
+        <CardTitle className="text-lg flex justify-between items-center font-bold">
           <span>Order Summary</span>
-          <Badge variant="secondary" className="bg-primary/20 text-primary font-mono">{cart.length} target</Badge>
+          <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground font-mono px-2 py-0.5 rounded-full">{cart.length} items</Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 flex-1 flex flex-col pt-0 mt-4">
-        <div className="space-y-3 flex-1 text-sm">
-          <div className="flex justify-between text-gray-500">
+      <CardContent className="p-5 flex-1 flex flex-col mt-2">
+        <div className="space-y-4 flex-1 text-sm">
+          <div className="flex justify-between text-gray-600 dark:text-gray-400">
             <span>Subtotal</span>
-            <span className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(subtotal)}</span>
+            <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{formatCurrency(subtotal)}</span>
           </div>
-          <div className="flex justify-between text-gray-500">
+          <div className="flex justify-between text-gray-600 dark:text-gray-400">
             <span>Discount</span>
-            <span className="font-mono text-gray-900 dark:text-gray-100">-{formatCurrency(discount)}</span>
+            <span className="font-mono font-medium text-gray-900 dark:text-gray-100">-{formatCurrency(discount)}</span>
           </div>
-          <div className="flex justify-between text-gray-500">
+          <div className="flex justify-between text-gray-600 dark:text-gray-400">
             <span>VAT (18%)</span>
-            <span className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(tax)}</span>
+            <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{formatCurrency(tax)}</span>
           </div>
-          <Separator className="my-2" />
-          <div className="flex justify-between font-bold text-lg">
-            <span>Total</span>
-            <span className="font-mono text-primary">{formatCurrency(total)}</span>
+          <Separator className="my-4 border-gray-200 dark:border-gray-800 text-gray-100 dark:text-gray-800" />
+          <div className="flex justify-between font-bold text-xl px-2 py-3 bg-gray-50 dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 items-center shadow-inner">
+            <span className="text-gray-700 dark:text-gray-300">Total</span>
+            <span className="font-mono text-emerald-600 dark:text-emerald-400 text-2xl">{formatCurrency(total)}</span>
           </div>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            <Button 
-              variant={paymentMethod === "Cash" ? "default" : "outline"}
-              className={`h-16 flex flex-col gap-1 ${paymentMethod === 'Cash' ? 'shadow-md shadow-primary/20' : ''}`}
-              onClick={() => setPaymentMethod("Cash")}
-            >
-              <Banknote className="h-5 w-5" />
-              <span className="text-[10px]">Cash</span>
-            </Button>
-            <Button 
-              variant={paymentMethod === "Card" ? "default" : "outline"}
-              className={`h-16 flex flex-col gap-1 ${paymentMethod === 'Card' ? 'shadow-md shadow-primary/20' : ''}`}
-              onClick={() => setPaymentMethod("Card")}
-            >
-              <CreditCard className="h-5 w-5" />
-              <span className="text-[10px]">Card</span>
-            </Button>
-            <Button 
-              variant={paymentMethod === "Mobile" ? "default" : "outline"}
-              className={`h-16 flex flex-col gap-1 ${paymentMethod === 'Mobile' ? 'shadow-md shadow-primary/20' : ''}`}
-              onClick={() => setPaymentMethod("Mobile")}
-            >
-              <Smartphone className="h-5 w-5" />
-              <span className="text-[10px]">Mobile</span>
-            </Button>
+        <div className="mt-8 space-y-5">
+          <div>
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Payment Method</h4>
+            <div className="grid grid-cols-3 gap-3">
+              <Button 
+                variant={paymentMethod === "Cash" ? "default" : "outline"}
+                className={`h-20 flex flex-col gap-2 rounded-xl transition-all ${paymentMethod === 'Cash' ? 'shadow-md shadow-primary/20 ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900' : 'hover:border-primary/50 text-gray-500'}`}
+                onClick={() => setPaymentMethod("Cash")}
+              >
+                <Banknote className="h-6 w-6" />
+                <span className="text-xs font-semibold tracking-wide">Cash</span>
+              </Button>
+              <Button 
+                variant={paymentMethod === "Card" ? "default" : "outline"}
+                className={`h-20 flex flex-col gap-2 rounded-xl transition-all ${paymentMethod === 'Card' ? 'shadow-md shadow-primary/20 ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900' : 'hover:border-primary/50 text-gray-500'}`}
+                onClick={() => setPaymentMethod("Card")}
+              >
+                <CreditCard className="h-6 w-6" />
+                <span className="text-xs font-semibold tracking-wide">Card</span>
+              </Button>
+              <Button 
+                variant={paymentMethod === "Mobile" ? "default" : "outline"}
+                className={`h-20 flex flex-col gap-2 rounded-xl transition-all ${paymentMethod === 'Mobile' ? 'shadow-md shadow-primary/20 ring-2 ring-primary ring-offset-2 dark:ring-offset-gray-900' : 'hover:border-primary/50 text-gray-500'}`}
+                onClick={() => setPaymentMethod("Mobile")}
+              >
+                <Smartphone className="h-6 w-6" />
+                <span className="text-xs font-semibold tracking-wide">Mobile</span>
+              </Button>
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" className="w-14 items-center justify-center shrink-0 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={clearCart} disabled={cart.length === 0}>
-              <Trash2 className="h-4 w-4" />
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" size="icon" className="w-14 h-14 rounded-xl items-center justify-center shrink-0 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:hover:bg-red-950 dark:hover:border-red-800 transition shadow-sm" onClick={clearCart} disabled={cart.length === 0}>
+              <Trash2 className="h-5 w-5" />
             </Button>
             <Button 
               className="flex-1 h-12 text-lg font-bold shadow-lg shadow-primary/25"
