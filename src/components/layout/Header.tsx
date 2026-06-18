@@ -97,7 +97,7 @@ export function Header() {
                     No new alerts
                   </div>
                 )}
-                {stats?.low_stock_alerts?.map((item: any) => (
+                {stats?.lowStockAlerts?.map((item: any) => (
                   <Link key={item.id} href="/inventory">
                     <div className="flex gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md cursor-pointer">
                       <div className="mt-0.5 h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
@@ -112,7 +112,7 @@ export function Header() {
                     </div>
                   </Link>
                 ))}
-                {stats?.expiring_soon_alerts?.map((item: any) => (
+                {stats?.expiringSoonAlerts?.map((item: any) => (
                   <Link key={item.id} href="/medicines">
                     <div className="flex gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md cursor-pointer">
                       <div className="mt-0.5 h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">

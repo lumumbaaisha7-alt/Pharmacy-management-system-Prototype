@@ -18,7 +18,7 @@ import exportRoutes from './server/routes/exports';
 
 async function startServer() {
   const app = express();
-  const PORT = parseInt(process.env.PORT as string || "3000", 10);
+  const PORT = 3000;
 
   // Middleware
   app.use(cors({
