@@ -20,21 +20,13 @@ async function testDbConnection(): Promise<{ success: boolean; error?: string; d
 
 const router = Router();
 
-let installStatus = {
-  step: 0,
-  progress: 0,
-  message: 'Ready',
-  error: null as string | null,
-  complete: false
-};
+let installStatus = { step: 0, progress: 0, message: 'Ready', error: null as string | null, complete: false };
 
 router.get('/status', (req, res) => {
   res.json(installStatus);
 });
 
 router.post('/', async (req, res) => {
-  console.log('=== INSTALL ENDPOINT CALLED ===');
-
   const dbTest = await testDbConnection();
   if (!dbTest.success) {
     return res.status(500).json({
@@ -46,44 +38,29 @@ router.post('/', async (req, res) => {
 
   try {
     const { pharmacyDetails, adminDetails, branding } = req.body;
-
-    // Check if already installed
+    
     let isInstalled = false;
     try {
-      const [rows]: any = await pool.query(
-        'SELECT value_data FROM settings WHERE key_name = ?',
-        ['app_installed']
-      );
+      const [rows]: any = await pool.query('SELECT value_data FROM settings WHERE key_name = ?', ['app_installed']);
       if (rows.length > 0 && rows[0].value_data === 'true') {
         isInstalled = true;
       }
-    } catch (e) {
-      // Table doesn't exist yet — expected on first run
+    } catch(e) {
+      // Table might not exist yet, ignore
     }
 
     if (isInstalled) {
       return res.status(409).json({ error: 'App is already installed' });
     }
 
-    installStatus = {
-      step: 1,
-      progress: 10,
-      message: 'Creating database tables...',
-      error: null,
-      complete: false
-    };
-
+    installStatus = { step: 1, progress: 10, message: 'Creating database schema...', error: null, complete: false };
     res.status(202).json({ message: 'Installation started' });
 
-    // Run async
+    // Run installation asynchronously
     (async () => {
-      let connection: any;
+      let connection;
       try {
         connection = await pool.getConnection();
-        console.log('=== STARTING INSTALLATION ===');
-
-        // Each table as a separate statement — mysql2 does not support
-        // multiple statements in one query() call by default
         const tables = [
           {
             name: 'users',
@@ -167,115 +144,86 @@ router.post('/', async (req, res) => {
 
         for (const table of tables) {
           try {
-            console.log(`Creating table: ${table.name}`);
             await connection.query(table.sql);
-            console.log(`✓ Table ${table.name} ready`);
-          } catch (err: any) {
-            // 1050 = table already exists — safe to ignore
-            if (err?.errno !== 1050) {
-              throw new Error(`Failed creating table ${table.name}: ${err?.message} (errno: ${err?.errno})`);
+          } catch (stmtErr: any) {
+            // Allow duplicate index errors (code 1061) to pass silently
+            if (stmtErr?.errno !== 1061 && stmtErr?.errno !== 1050) {
+              throw stmtErr;
             }
-            console.log(`Table ${table.name} already exists, skipping`);
+            console.warn('Skipping already-exists error:', stmtErr?.message);
           }
         }
 
-        installStatus = {
-          step: 2,
-          progress: 40,
-          message: 'Setting up admin user...',
-          error: null,
-          complete: false
-        };
+        // Create indexes safely (ignore if already exist)
+        const indexes = [
+          'CREATE INDEX idx_medicines_category ON medicines(category)',
+          'CREATE INDEX idx_inventory_date ON inventory_transactions(date)',
+          'CREATE INDEX idx_sales_date ON sales(created_at)'
+        ];
+        for (const idx of indexes) {
+          try { await connection.query(idx); } catch (e: any) { /* ignore errno 1061 duplicate */ }
+        }
 
-        // Create admin user
+        installStatus = { step: 2, progress: 40, message: 'Setting up admin user...', error: null, complete: false };
+        
         const passwordHash = await bcrypt.hash(adminDetails.password, 10);
         await connection.query(
-          `INSERT IGNORE INTO \`users\` (name, email, password_hash, role) VALUES (?, ?, ?, ?)`,
+          `INSERT IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)`,
           [adminDetails.name, adminDetails.email, passwordHash, 'admin']
         );
-        console.log('✓ Admin user created');
 
-        installStatus = {
-          step: 3,
-          progress: 60,
-          message: 'Saving settings...',
-          error: null,
-          complete: false
-        };
+        installStatus = { step: 3, progress: 60, message: 'Configuring settings...', error: null, complete: false };
 
-        // Save settings one by one
         const settings: [string, string][] = [
-          ['pharmacy_name', pharmacyDetails.name || ''],
+          ['pharmacy_name', pharmacyDetails.name],
           ['phone', pharmacyDetails.phone || ''],
           ['email', pharmacyDetails.email || ''],
           ['address', pharmacyDetails.address || ''],
-          ['currency', branding?.currency || 'TZS'],
-          ['timezone', branding?.timezone || 'Africa/Dar_es_Salaam'],
+          ['currency', branding.currency || 'TZS'],
+          ['timezone', branding.timezone || 'Africa/Dar_es_Salaam'],
           ['tax_rate', '18'],
           ['app_installed', 'true']
         ];
-
-        if (branding?.logo_base64) settings.push(['logo_base64', branding.logo_base64]);
-        if (branding?.favicon_base64) settings.push(['favicon_base64', branding.favicon_base64]);
-
+        
+        if (branding.logo_base64) settings.push(['logo_base64', branding.logo_base64]);
+        if (branding.favicon_base64) settings.push(['favicon_base64', branding.favicon_base64]);
+        
         for (const [key, val] of settings) {
-          await connection.query(
-            `INSERT IGNORE INTO \`settings\` (key_name, value_data) VALUES (?, ?)`,
-            [key, val]
-          );
+          await connection.query(`INSERT IGNORE INTO settings (key_name, value_data) VALUES (?, ?)`, [key, val]);
         }
-        console.log('✓ Settings saved');
 
-        installStatus = {
-          step: 4,
-          progress: 80,
-          message: 'Adding sample medicines...',
-          error: null,
-          complete: false
-        };
+        installStatus = { step: 4, progress: 80, message: 'Adding sample medicines...', error: null, complete: false };
 
-        // Sample medicines
         const medicines = [
-          ['MED-001', 'Amoxicillin 500mg', 'Amoxicillin', 'Antibiotics', 'AMO-001', '7891234567890', 125, 1500, 2500, '2026-10-15'],
-          ['MED-002', 'Paracetamol 500mg', 'Acetaminophen', 'Analgesics', 'PAR-001', '7891234567891', 450, 200, 500, '2027-05-20'],
-          ['MED-003', 'Ibuprofen 400mg', 'Ibuprofen', 'NSAIDs', 'IBU-001', '7891234567892', 200, 600, 1000, '2026-12-01'],
-          ['MED-004', 'Vitamin C 1000mg', 'Ascorbic Acid', 'Vitamins', 'VIT-001', '7891234567893', 320, 800, 1500, '2027-08-10']
+          { id: "MED-001", name: "Amoxicillin 500mg", generic_name: "Amoxicillin", category: "Antibiotics", stock: 125, min: 50, selling_price: 2500, purchase_price: 1500, expiry_date: "2026-10-15", batch: "B-2024", barcode: "89012345678" },
+          { id: "MED-002", name: "Paracetamol 500mg", generic_name: "Acetaminophen", category: "Analgesics", stock: 450, min: 100, selling_price: 500, purchase_price: 200, expiry_date: "2027-05-20", batch: "P-1123", barcode: "89023456789" },
+          { id: "MED-003", name: "Ibuprofen 400mg", generic_name: "Ibuprofen", category: "NSAIDs", stock: 200, min: 100, selling_price: 1000, purchase_price: 600, expiry_date: "2026-12-01", batch: "I-2331", barcode: "89034567890" },
+          { id: "MED-004", name: "Vitamin C 1000mg", generic_name: "Ascorbic Acid", category: "Vitamins", stock: 320, min: 50, selling_price: 1500, purchase_price: 800, expiry_date: "2025-08-10", batch: "V-9901", barcode: "89045678901" }
         ];
 
         for (const med of medicines) {
           await connection.query(
-            `INSERT IGNORE INTO \`medicines\` (id, name, generic_name, category, batch_number, barcode, stock, purchase_price, selling_price, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            med
+            `INSERT IGNORE INTO medicines (id, name, generic_name, category, batch_number, barcode, stock, purchase_price, selling_price, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [med.id, med.name, med.generic_name, med.category, med.batch, med.barcode, med.stock, med.purchase_price, med.selling_price, med.expiry_date]
           );
         }
-        console.log('✓ Sample medicines added');
 
-        installStatus = {
-          step: 5,
-          progress: 100,
-          message: 'Installation complete!',
-          error: null,
-          complete: true
-        };
-        console.log('=== INSTALLATION COMPLETE ===');
-
+        installStatus = { step: 5, progress: 100, message: 'Installation complete', error: null, complete: true };
       } catch (err: any) {
-        console.error('=== INSTALL ERROR ===', err?.message);
-        installStatus = {
-          step: -1,
-          progress: 0,
-          message: 'Installation failed: ' + (err?.message || 'Unknown error'),
-          error: err?.message || 'Unknown error',
-          complete: false
+        console.error("=== INSTALL ERROR ===", err?.message, err?.stack);
+        installStatus = { 
+          step: -1, 
+          progress: 0, 
+          message: 'Installation failed: ' + (err?.message || 'Unknown error'), 
+          error: err?.message || 'Unknown error', 
+          complete: false 
         };
       } finally {
         if (connection) connection.release();
       }
     })();
-
   } catch (err: any) {
-    console.error('POST /install outer error:', err);
-    res.status(500).json({ error: 'Server error', message: err?.message });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

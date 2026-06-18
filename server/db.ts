@@ -2,9 +2,8 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Determine if we should use SSL (only for non-.internal hosts)
 const host = process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST || 'localhost';
-const shouldUseSSL = !host.includes('.internal') && host !== 'localhost';
+const shouldUseSSL = !host.includes('.internal') && host !== 'localhost' && host !== '127.0.0.1';
 
 export const pool = mysql.createPool({
   host: host,
@@ -20,3 +19,5 @@ export const pool = mysql.createPool({
   keepAliveInitialDelay: 10000,
   ssl: shouldUseSSL ? { rejectUnauthorized: false } : undefined,
 });
+
+
