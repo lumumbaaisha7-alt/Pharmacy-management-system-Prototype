@@ -44,17 +44,29 @@ router.post('/transactions', async (req, res) => {
     const tx = req.body;
     await connection.beginTransaction();
 
+    const medicineId = tx.medicineId || tx.medicine_id;
+    const medicineName = tx.medicineName || tx.medicine_name;
+
     await connection.query(
       `INSERT INTO inventory_transactions (medicine_id, medicine_name, type, quantity, reason, reference, performer) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [tx.medicine_id, tx.medicine_name, tx.type, tx.quantity, tx.reason, tx.reference, tx.performer]
+      [medicineId, medicineName, tx.type, tx.quantity, tx.reason, tx.reference, tx.performer]
     );
 
     // Update medicine stock
-    const qtyChange = tx.type === 'IN' ? tx.quantity : (tx.type === 'OUT' ? -tx.quantity : tx.quantity);
+    let qtyChange: number;
+    if (tx.type === 'IN') {
+      qtyChange = Math.abs(tx.quantity);
+    } else if (tx.type === 'OUT' || tx.type === 'TRANSFER') {
+      qtyChange = -Math.abs(tx.quantity);
+    } else if (tx.type === 'ADJUST') {
+      qtyChange = tx.quantity; // ADJUST can be positive or negative, use as-is
+    } else {
+      qtyChange = tx.quantity;
+    }
     await connection.query(
       `UPDATE medicines SET stock = stock + ? WHERE id = ?`,
-      [qtyChange, tx.medicine_id]
+      [qtyChange, medicineId]
     );
 
     await connection.commit();

@@ -51,7 +51,7 @@ export function Medicines() {
     try {
       setLoading(true);
       const res = await api.get('/medicines');
-      setData(res.data);
+      setData(res.data.data);
     } catch (err) {
       toast.error("Failed to load medicines");
     } finally {

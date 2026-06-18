@@ -37,8 +37,8 @@ export function Inventory() {
         api.get('/inventory/transactions'),
         api.get('/medicines')
       ]);
-      setHistory(histRes.data);
-      setMedicinesData(medRes.data);
+      setHistory(histRes.data.data);
+      setMedicinesData(medRes.data.data);
     } catch(err) {
       toast.error("Failed to load inventory data");
     } finally {

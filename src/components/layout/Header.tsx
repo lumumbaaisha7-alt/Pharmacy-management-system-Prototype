@@ -41,7 +41,7 @@ export function Header() {
     return () => clearInterval(interval);
   }, []);
 
-  const alertCount = (stats?.low_stock_count || 0) + (stats?.expiring_soon_count || 0);
+  const alertCount = (stats?.lowStockCount || 0) + (stats?.expiringSoonCount || 0);
 
   const handleLogout = () => {
     logout();

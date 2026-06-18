@@ -31,14 +31,14 @@ router.get('/stats', async (req, res) => {
     const [expiringSoonAlerts] = await pool.query(`SELECT id, name, expiry_date as expiry FROM medicines WHERE expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) ORDER BY expiry_date ASC LIMIT 10`);
 
     res.json({
-      today_sales: todayRows[0]?.total || 0,
-      monthly_sales: monthRows[0]?.total || 0,
-      total_medicines: medRows[0]?.total || 0,
-      low_stock_count: lowStockRows[0]?.total || 0,
-      expiring_soon_count: expiringRows[0]?.total || 0,
-      recent_sales: recentSales,
-      low_stock_alerts: lowStockAlerts,
-      expiring_soon_alerts: expiringSoonAlerts
+      todaySales: todayRows[0]?.total || 0,
+      monthlySales: monthRows[0]?.total || 0,
+      totalMedicines: medRows[0]?.total || 0,
+      lowStockCount: lowStockRows[0]?.total || 0,
+      expiringSoonCount: expiringRows[0]?.total || 0,
+      recentSales: recentSales,
+      lowStockAlerts: lowStockAlerts,
+      expiringSoonAlerts: expiringSoonAlerts
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
